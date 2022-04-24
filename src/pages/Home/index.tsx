@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useContext } from "react";
+import { Can, GuardContext } from "../../guards/GuardContext";
 import { fetchTasks, create, removeTask, updateToClosed } from "./services";
 import {
   ActionContainer,
@@ -23,6 +24,7 @@ type Task = {
 };
 
 export const Home = () => {
+  const ability = useContext(GuardContext);
   const [tasks, setTasks] = React.useState<Task[]>([]);
 
   function refresh() {
@@ -34,6 +36,13 @@ export const Home = () => {
   }, []);
 
   const onRemove = async (id: number) => {
+    const canotRemove = ability.cannot("delete", "Task");
+
+    if (canotRemove) {
+      alert("Ops, você não tem permissão para isso, contate um admin.");
+      return;
+    }
+
     await removeTask(id);
 
     setTasks((prev) => prev.filter((task) => task.id !== id));
@@ -64,10 +73,12 @@ export const Home = () => {
       <Container>
         <Title>Task Manager</Title>
 
-        <Form onSubmit={onSubmit}>
-          <Input type="text" name="title" required />
-          <NewButton type="submit">Criar nova tarefa</NewButton>
-        </Form>
+        <Can I="create" a="Task">
+          <Form onSubmit={onSubmit}>
+            <Input type="text" name="title" required />
+            <NewButton type="submit">Criar nova tarefa</NewButton>
+          </Form>
+        </Can>
 
         <Divider />
 
@@ -78,13 +89,17 @@ export const Home = () => {
               <p>{task.title}</p>
               <ActionContainer>
                 {task.status === "open" && (
-                  <DoneButton onClick={() => onDone(task.id)}>
-                    Concluir
-                  </DoneButton>
+                  <Can I="update" a="Task">
+                    <DoneButton onClick={() => onDone(task.id)}>
+                      Concluir
+                    </DoneButton>
+                  </Can>
                 )}
+                {/* <Can I="delete" a="Task"> */}
                 <RemoveButton onClick={() => onRemove(task.id)}>
                   Excluir
                 </RemoveButton>
+                {/* </Can> */}
               </ActionContainer>
             </ListItem>
           ))}
